@@ -1,6 +1,6 @@
 extern crate libc;
 
-use std::io::{IoError, File, Open, ReadWrite};
+use std::io::{IoResult, IoError, File, Open, ReadWrite};
 use std::os::unix::prelude::AsRawFd;
 use std::string::String;
 use self::libc::funcs::bsd44::ioctl;
@@ -12,6 +12,9 @@ use c_interop::*;
 
 
 const DEVICE_PATH: &'static str = "/dev/net/tun";
+
+// TODO Make not a constant
+const MTU_SIZE: uint = 1500;
 
 
 #[deriving(Copy, Clone, Eq, PartialEq, Hash)]
@@ -158,5 +161,16 @@ impl TunTap {
 		else {
 			panic!("IP length must be either 4 or 16 bytes, got {}", ip.len());
 		}
+	}
+
+	pub fn read<'a>(&mut self, buffer: &'a mut [u8]) -> IoResult<&'a [u8]> {
+		assert!(buffer.len() >= MTU_SIZE);
+
+		let len = try!(self.file.read(buffer));
+		Ok(buffer.slice_to(len))
+	}
+
+	pub fn write(&mut self, data: &[u8]) -> IoResult<()> {
+		self.file.write(data)
 	}
 }
