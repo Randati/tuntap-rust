@@ -28,20 +28,20 @@ pub struct in6_ifreq {
 
 #[repr(C)]
 pub struct ioctl_flags_data {
-	pub ifr_name: [u8, ..IFNAMSIZ],
+	pub ifr_name: [u8; IFNAMSIZ],
 	pub ifr_flags: libc::c_short
 }
 
 #[repr(C)]
 pub struct ioctl_ifindex_data {
-	pub ifr_name: [u8, ..IFNAMSIZ],
+	pub ifr_name: [u8; IFNAMSIZ],
 	pub ifr_ifindex: libc::c_int
 }
 
 
-pub fn str_as_buffer(s: &str) -> [u8, ..IFNAMSIZ] {
+pub fn str_as_buffer(s: &str) -> [u8; IFNAMSIZ] {
 	let bytes = s.as_bytes();
-	let mut buffer = [0u8, ..IFNAMSIZ];
+	let mut buffer = [0u8; IFNAMSIZ];
 	copy_memory(&mut buffer, bytes);
 	buffer
 }

@@ -27,7 +27,7 @@ pub enum TunTapType {
 pub struct TunTap {
 	pub file: File,
 	sock: libc::c_int,
-	if_name: [u8, ..IFNAMSIZ],
+	if_name: [u8; IFNAMSIZ],
 	if_index: libc::c_int
 }
 
@@ -54,7 +54,7 @@ impl TunTap {
 		}
 	}
 
-	fn create_if(typ: TunTapType, name: &str) -> (File, [u8, ..IFNAMSIZ]) {
+	fn create_if(typ: TunTapType, name: &str) -> (File, [u8; IFNAMSIZ]) {
 		if name.len() >= IFNAMSIZ {
 			panic!("Interface name too long, max length is {}", IFNAMSIZ - 1);
 		}
@@ -81,7 +81,7 @@ impl TunTap {
 		(file, req.ifr_name)
 	}
 
-	fn create_socket(if_name: [u8, ..IFNAMSIZ]) -> (libc::c_int, libc::c_int) {
+	fn create_socket(if_name: [u8; IFNAMSIZ]) -> (libc::c_int, libc::c_int) {
 		let sock = unsafe { socket(AF_INET6, SOCK_DGRAM, 0) };
 		if sock < 0 {
 			panic!("{}", IoError::last_error());
