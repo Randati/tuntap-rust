@@ -17,7 +17,7 @@ const DEVICE_PATH: &'static str = "/dev/net/tun";
 const MTU_SIZE: uint = 1500;
 
 
-#[deriving(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum TunTapType {
 	Tun,
 	Tap
