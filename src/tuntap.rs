@@ -140,14 +140,14 @@ impl TunTap {
 		else if ip.len() == 16 {
 			let mut req = in6_ifreq {
 				ifr6_addr: in6_addr {s6_addr: [
-					ip[ 1] as u16 << 8 | ip[ 0] as u16,
-					ip[ 3] as u16 << 8 | ip[ 2] as u16,
-					ip[ 5] as u16 << 8 | ip[ 4] as u16,
-					ip[ 7] as u16 << 8 | ip[ 6] as u16,
-					ip[ 9] as u16 << 8 | ip[ 8] as u16,
-					ip[11] as u16 << 8 | ip[10] as u16,
-					ip[13] as u16 << 8 | ip[12] as u16,
-					ip[15] as u16 << 8 | ip[14] as u16
+					(ip[ 1] as u16) << 8 | ip[ 0] as u16,
+					(ip[ 3] as u16) << 8 | ip[ 2] as u16,
+					(ip[ 5] as u16) << 8 | ip[ 4] as u16,
+					(ip[ 7] as u16) << 8 | ip[ 6] as u16,
+					(ip[ 9] as u16) << 8 | ip[ 8] as u16,
+					(ip[11] as u16) << 8 | ip[10] as u16,
+					(ip[13] as u16) << 8 | ip[12] as u16,
+					(ip[15] as u16) << 8 | ip[14] as u16
 				]},
 				ifr6_prefixlen: 8,
 				ifr6_ifindex: self.if_index
