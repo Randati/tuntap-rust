@@ -1,13 +1,12 @@
-extern crate libc;
-
 use std::io::{IoResult, IoError, File, Open, ReadWrite};
 use std::os::unix::prelude::AsRawFd;
 use std::string::String;
-use self::libc::funcs::bsd44::ioctl;
-use self::libc::types::os::common::bsd44::in6_addr;
-use self::libc::consts::os::bsd44::{AF_INET6, SOCK_DGRAM};
-use self::libc::funcs::bsd43::socket;
-use self::libc::funcs::posix88::unistd::close;
+use libc::c_int;
+use libc::consts::os::bsd44::{AF_INET6, SOCK_DGRAM};
+use libc::funcs::bsd43::socket;
+use libc::funcs::bsd44::ioctl;
+use libc::funcs::posix88::unistd::close;
+use libc::types::os::common::bsd44::in6_addr;
 use c_interop::*;
 
 
@@ -26,9 +25,9 @@ pub enum TunTapType {
 
 pub struct TunTap {
 	pub file: File,
-	sock: libc::c_int,
+	sock: c_int,
 	if_name: [u8; IFNAMSIZ],
-	if_index: libc::c_int
+	if_index: c_int
 }
 
 impl Drop for TunTap {
@@ -81,7 +80,7 @@ impl TunTap {
 		(file, req.ifr_name)
 	}
 
-	fn create_socket(if_name: [u8; IFNAMSIZ]) -> (libc::c_int, libc::c_int) {
+	fn create_socket(if_name: [u8; IFNAMSIZ]) -> (c_int, c_int) {
 		let sock = unsafe { socket(AF_INET6, SOCK_DGRAM, 0) };
 		if sock < 0 {
 			panic!("{}", IoError::last_error());
