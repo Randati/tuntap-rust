@@ -17,7 +17,7 @@ int main() {
 	RUST_CONST(IFF_UP, c_short, "%d")
 	RUST_CONST(IFF_RUNNING, c_short, "%d")
 
-	RUST_CONST(IFNAMSIZ, uint, "%d")
+	RUST_CONST(IFNAMSIZ, usize, "%d")
 
 	return 0;
 }

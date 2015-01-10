@@ -13,7 +13,7 @@ use c_interop::*;
 const DEVICE_PATH: &'static str = "/dev/net/tun";
 
 // TODO Make not a constant
-const MTU_SIZE: uint = 1500;
+const MTU_SIZE: usize = 1500;
 
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
