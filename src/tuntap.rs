@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::fmt;
 use std::io::{IoResult, IoError, File, Open, ReadWrite};
 use std::os::unix::prelude::AsRawFd;
 use libc::c_int;
@@ -16,7 +17,7 @@ const DEVICE_PATH: &'static str = "/dev/net/tun";
 const MTU_SIZE: usize = 1500;
 
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Show, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum TunTapType {
 	Tun,
 	Tap
@@ -35,6 +36,13 @@ impl Drop for TunTap {
 		unsafe { close(self.sock) };
 	}
 }
+
+impl fmt::Show for TunTap {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "Tun({:?})", self.get_name())
+	}
+}
+
 
 impl TunTap {
 	pub fn create(typ: TunTapType) -> TunTap {
