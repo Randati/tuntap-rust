@@ -107,7 +107,12 @@ impl TunTap {
 	}
 
 	pub fn get_name(&self) -> CString {
-		CString::from_slice(&self.if_name)
+		let nul_pos = match self.if_name.as_slice().position_elem(&0) {
+			Some(p) => p,
+			None => panic!("Device name should be null-terminated")
+		};
+
+		CString::from_slice(self.if_name.slice_to(nul_pos))
 	}
 
 	pub fn up(&self) {
