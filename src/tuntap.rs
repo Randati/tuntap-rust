@@ -1,6 +1,6 @@
+use std::ffi::CString;
 use std::io::{IoResult, IoError, File, Open, ReadWrite};
 use std::os::unix::prelude::AsRawFd;
-use std::string::String;
 use libc::c_int;
 use libc::consts::os::bsd44::{AF_INET6, SOCK_DGRAM};
 use libc::funcs::bsd43::socket;
@@ -38,10 +38,10 @@ impl Drop for TunTap {
 
 impl TunTap {
 	pub fn create(typ: TunTapType) -> TunTap {
-		TunTap::create_named(typ, "")
+		TunTap::create_named(typ, &CString::from_slice(&[]))
 	}
 
-	pub fn create_named(typ: TunTapType, name: &str) -> TunTap {
+	pub fn create_named(typ: TunTapType, name: &CString) -> TunTap {
 		let (file, if_name) = TunTap::create_if(typ, name);
 		let (sock, if_index) = TunTap::create_socket(if_name);
 
@@ -53,8 +53,9 @@ impl TunTap {
 		}
 	}
 
-	fn create_if(typ: TunTapType, name: &str) -> (File, [u8; IFNAMSIZ]) {
-		if name.len() >= IFNAMSIZ {
+	fn create_if(typ: TunTapType, name: &CString) -> (File, [u8; IFNAMSIZ]) {
+		let name_slice = name.as_bytes_with_nul();
+		if name_slice.len() > IFNAMSIZ {
 			panic!("Interface name too long, max length is {}", IFNAMSIZ - 1);
 		}
 
@@ -65,7 +66,11 @@ impl TunTap {
 		};
 
 		let mut req = ioctl_flags_data {
-			ifr_name: str_as_buffer(name),
+			ifr_name: {
+				let mut buffer = [0u8; IFNAMSIZ];
+				buffer.clone_from_slice(name_slice);
+				buffer
+			},
 			ifr_flags: match typ {
 				TunTapType::Tun => IFF_TUN,
 				TunTapType::Tap => IFF_TAP
@@ -101,8 +106,8 @@ impl TunTap {
 		(sock, req.ifr_ifindex)
 	}
 
-	pub fn get_name(&self) -> String {
-		unsafe { String::from_raw_buf_len(self.if_name.as_ptr(), IFNAMSIZ) }
+	pub fn get_name(&self) -> CString {
+		CString::from_slice(&self.if_name)
 	}
 
 	pub fn up(&self) {
