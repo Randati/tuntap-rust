@@ -1,8 +1,8 @@
-#![allow(unstable)]
+#![feature(collections, core, io, os, path)]
 
 use std::os::getenv;
-use std::io::Command;
-use std::io::File;
+use std::old_io::Command;
+use std::old_io::File;
 
 fn main() {
 	let src_dir = Path::new(getenv("CARGO_MANIFEST_DIR").unwrap());

@@ -1,6 +1,6 @@
 use std::ffi::CString;
 use std::fmt;
-use std::io::{IoResult, IoError, File, Open, ReadWrite};
+use std::old_io::{IoResult, IoError, File, Open, ReadWrite};
 use std::os::unix::prelude::AsRawFd;
 use libc::c_int;
 use libc::consts::os::bsd44::{AF_INET6, SOCK_DGRAM};
@@ -188,6 +188,6 @@ impl TunTap {
 	}
 
 	pub fn write(&mut self, data: &[u8]) -> IoResult<()> {
-		self.file.write(data)
+		self.file.write_all(data)
 	}
 }

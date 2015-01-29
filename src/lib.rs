@@ -1,4 +1,4 @@
-#![allow(unstable)]
+#![feature(collections, core, hash, io, libc, path, std_misc)]
 
 extern crate libc;
 
