@@ -17,7 +17,7 @@ const DEVICE_PATH: &'static str = "/dev/net/tun";
 const MTU_SIZE: usize = 1500;
 
 
-#[derive(Show, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum TunTapType {
 	Tun,
 	Tap
@@ -37,7 +37,7 @@ impl Drop for TunTap {
 	}
 }
 
-impl fmt::Show for TunTap {
+impl fmt::Debug for TunTap {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "Tun({:?})", self.get_name())
 	}
