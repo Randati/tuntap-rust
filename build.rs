@@ -1,3 +1,5 @@
+#![allow(unstable)]
+
 use std::os::getenv;
 use std::io::Command;
 use std::io::File;
