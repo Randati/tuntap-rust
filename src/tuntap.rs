@@ -120,7 +120,7 @@ impl TunTap {
 			None => panic!("Device name should be null-terminated")
 		};
 
-		CString::from_slice(self.if_name.slice_to(nul_pos))
+		CString::from_slice(&self.if_name[..nul_pos])
 	}
 
 	pub fn up(&self) {
@@ -184,7 +184,7 @@ impl TunTap {
 		assert!(buffer.len() >= MTU_SIZE);
 
 		let len = try!(self.file.read(buffer));
-		Ok(buffer.slice_to(len))
+		Ok(&buffer[..len])
 	}
 
 	pub fn write(&mut self, data: &[u8]) -> IoResult<()> {
