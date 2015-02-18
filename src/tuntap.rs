@@ -1,7 +1,11 @@
 use std::ffi::CString;
 use std::fmt;
-use std::old_io::{IoResult, IoError, File, Open, ReadWrite};
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::{Read, Write};
+use std::io;
 use std::os::unix::prelude::AsRawFd;
+use std::path::Path;
 use libc::c_int;
 use libc::consts::os::bsd44::{AF_INET6, SOCK_DGRAM};
 use libc::funcs::bsd43::socket;
@@ -68,8 +72,8 @@ impl TunTap {
 		}
 
 		let path = Path::new(DEVICE_PATH);
-		let file = match File::open_mode(&path, Open, ReadWrite) {
-			Err(why) => panic!("Couldn't open tun device '{}': {}", path.display(), why.desc),
+		let file = match OpenOptions::new().read(true).write(true).open(&path) {
+			Err(why) => panic!("Couldn't open tun device '{}': {:?}", path.display(), why),
 			Ok(file) => file,
 		};
 
@@ -87,7 +91,7 @@ impl TunTap {
 
 		let res = unsafe { ioctl(file.as_raw_fd(), TUNSETIFF, &mut req) };
 		if res < 0 {
-			panic!("{}", IoError::last_error());
+			panic!("{}", io::Error::last_os_error());
 		}
 
 		(file, req.ifr_name)
@@ -96,7 +100,7 @@ impl TunTap {
 	fn create_socket(if_name: [u8; IFNAMSIZ]) -> (c_int, c_int) {
 		let sock = unsafe { socket(AF_INET6, SOCK_DGRAM, 0) };
 		if sock < 0 {
-			panic!("{}", IoError::last_error());
+			panic!("{}", io::Error::last_os_error());
 		}
 		
 		let mut req = ioctl_ifindex_data {
@@ -106,7 +110,7 @@ impl TunTap {
 
 		let res = unsafe { ioctl(sock, SIOCGIFINDEX, &mut req) };
 		if res < 0 {
-			let err = IoError::last_error();
+			let err = io::Error::last_os_error();
 			unsafe { close(sock) };
 			panic!("{}", err);
 		}
@@ -132,7 +136,7 @@ impl TunTap {
 
 		let res = unsafe { ioctl(self.sock, SIOCGIFFLAGS, &mut req) };
 		if res < 0 {
-			panic!("{}", IoError::last_error());
+			panic!("{}", io::Error::last_os_error());
 		}
 
 		if req.ifr_flags & IFF_UP & IFF_RUNNING != 0 {
@@ -144,7 +148,7 @@ impl TunTap {
 
 		let res = unsafe { ioctl(self.sock, SIOCSIFFLAGS, &mut req) };
 		if res < 0 {
-			panic!("{}", IoError::last_error());
+			panic!("{}", io::Error::last_os_error());
 		}
 	}
 
@@ -172,7 +176,7 @@ impl TunTap {
 
 			let res = unsafe { ioctl(self.sock, SIOCSIFADDR, &mut req) };
 			if res < 0 {
-				panic!("{}", IoError::last_error());
+				panic!("{}", io::Error::last_os_error());
 			}
 		}
 		else {
@@ -180,14 +184,14 @@ impl TunTap {
 		}
 	}
 
-	pub fn read<'a>(&mut self, buffer: &'a mut [u8]) -> IoResult<&'a [u8]> {
+	pub fn read<'a>(&mut self, buffer: &'a mut [u8]) -> io::Result<&'a [u8]> {
 		assert!(buffer.len() >= MTU_SIZE);
 
 		let len = try!(self.file.read(buffer));
 		Ok(&buffer[..len])
 	}
 
-	pub fn write(&mut self, data: &[u8]) -> IoResult<()> {
+	pub fn write(&mut self, data: &[u8]) -> io::Result<()> {
 		self.file.write_all(data)
 	}
 }
