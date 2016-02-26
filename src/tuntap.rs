@@ -85,8 +85,8 @@ impl TunTap {
 				buffer
 			},
 			ifr_flags: match typ {
-				TunTapType::Tun => IFF_TUN,
-				TunTapType::Tap => IFF_TAP
+				TunTapType::Tun => IFF_TUN | IFF_NO_PI,
+				TunTapType::Tap => IFF_TAP | IFF_NO_PI
 			}
 		};
 
