@@ -1,4 +1,4 @@
-#![feature(collections, core, fs, hash, io, libc, path, std_misc)]
+#![feature(libc, clone_from_slice)]
 
 extern crate libc;
 
