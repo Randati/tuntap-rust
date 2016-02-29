@@ -81,7 +81,7 @@ impl TunTap {
 		let mut req = ioctl_flags_data {
 			ifr_name: {
 				let mut buffer = [0u8; IFNAMSIZ];
-				buffer.clone_from_slice(name_slice);
+				buffer[..name_slice.len()].clone_from_slice(name_slice);
 				buffer
 			},
 			ifr_flags: match typ {
