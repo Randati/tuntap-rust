@@ -189,11 +189,11 @@ impl TunTap {
     }		
 	}
 
-	pub fn read<'a>(&mut self, buffer: &'a mut [u8]) -> io::Result<&'a [u8]> {
+	pub fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
 		assert!(buffer.len() >= MTU_SIZE);
 
 		let len = try!(self.file.read(buffer));
-		Ok(&buffer[..len])
+		Ok(len)
 	}
 
 	pub fn write(&mut self, data: &[u8]) -> io::Result<()> {
