@@ -1,7 +1,13 @@
-use libc::{c_int, c_ulong, c_short, in6_addr};
+extern crate libc;
+use libc::{c_int, c_ulong, c_short, sockaddr_in, in6_addr};
 
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
+#[repr(C)]
+pub struct in_ifreq {
+	pub ifr_name: [u8; IFNAMSIZ],
+	pub ifr_addr: sockaddr_in,
+}
 
 #[repr(C)]
 pub struct in6_ifreq {

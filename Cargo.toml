@@ -4,3 +4,6 @@ version = "0.0.1"
 authors = ["Vanhala Antti <antti.vanhala@aalto.fi>"]
 license = "MIT"
 build = "build.rs"
+
+[dependencies]
+libc = "0.2"

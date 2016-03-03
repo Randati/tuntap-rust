@@ -7,9 +7,8 @@ use std::io;
 use std::mem;
 use std::os::unix::prelude::AsRawFd;
 use std::path::Path;
-use libc::{c_int, c_char, c_void, AF_INET, AF_INET6, SOCK_DGRAM, socket, ioctl, close, in_addr, in6_addr};
+use libc::{c_int, c_char, c_void, AF_INET, AF_INET6, SOCK_DGRAM, socket, ioctl, close, in_addr, in6_addr, sockaddr_in, sa_family_t};
 use c_interop::*;
-
 
 const DEVICE_PATH: &'static str = "/dev/net/tun";
 
@@ -98,12 +97,12 @@ impl TunTap {
 		(file, req.ifr_name)
 	}
 
-	fn create_socket(if_name: [u8; IFNAMSIZ]) -> (c_int, c_int) {
-		let sock = unsafe { socket(AF_INET6, SOCK_DGRAM, 0) };
+	fn create_socket(if_name: [u8; IFNAMSIZ], sock_type: c_int) -> (c_int, c_int) {
+		let sock = unsafe { socket(sock_type, SOCK_DGRAM, 0) };
 		if sock < 0 {
 			panic!("{}", io::Error::last_os_error());
 		}
-		
+
 		let mut req = ioctl_ifindex_data {
 			ifr_name: if_name,
 			ifr_ifindex: -1
@@ -154,40 +153,72 @@ impl TunTap {
 		}
 	}
 
-	pub fn add_address(&self, ip: CString) {
-		self.up();
+    fn get_in_addr(&self, ip: CString) -> Result<in_addr, &'static str> {
+        let mut addr_4 = in_addr{ s_addr: 0};
+        let addr_4_ptr: *mut c_void = &mut addr_4 as *mut _ as *mut c_void;
 
-    // first check if we have an ipv4 address:
-    let mut addr_4 = in_addr{ s_addr: 0};
-    let addr_4_ptr: *mut c_void = &mut addr_4 as *mut _ as *mut c_void;
-    let ret = unsafe { inet_pton(AF_INET, ip.as_ptr(), addr_4_ptr) };
+        match unsafe { inet_pton(AF_INET, ip.as_ptr(), addr_4_ptr) } {
+            1 => Ok(unsafe { *(addr_4_ptr as *const in_addr) } ),
+            _ => Err("not a valid IPv4 address")
+        }
+    }
 
-    if ret == 1 {
-        // yay, we got an ipv4 address. And we also have an in_addr
-        panic!("IPv4 not implemented");
-    } else {
-        // let's try and get an in6_addr
+    fn get_in6_addr(&self, ip: CString) -> Result<in6_addr, &'static str> {
         let mut addr_6: in6_addr = unsafe { mem::uninitialized() };
         let addr_6_ptr: *mut c_void = &mut addr_6 as *mut _ as *mut c_void;
-        let ret = unsafe { inet_pton(AF_INET6, ip.as_ptr(), addr_6_ptr) };
 
-        if ret == 1 {
-            // yay, we got an ipv6 address.
-            let addr: in6_addr = unsafe { *(addr_6_ptr as *const in6_addr) };
-			      let mut req = in6_ifreq {
-				        ifr6_addr: addr,
-                ifr6_prefixlen: 8,
-                ifr6_ifindex: self.if_index
-            };
-			      let res = unsafe { ioctl(self.sock, SIOCSIFADDR, &mut req) };
-			      if res < 0 {
-				        panic!("{}", io::Error::last_os_error());
+        match unsafe { inet_pton(AF_INET6, ip.as_ptr(), addr_6_ptr) } {
+            1 => Ok(unsafe { *(addr_6_ptr as *const in6_addr) } ),
+            _ => Err("not a valid IPv6 address")
+        }
+    }
+
+
+    fn add_ipv4_addr(&self, addr: in_addr) {
+        let sock_addr = sockaddr_in {
+            sin_family: AF_INET as sa_family_t,
+            sin_port: 0,
+            sin_addr: addr,
+            sin_zero: [0, 0, 0, 0, 0, 0, 0, 0]
+        };
+
+        let mut req = in_ifreq {
+            ifr_name: self.if_name,
+            ifr_addr: sock_addr,
+        };
+
+			  let res = unsafe { ioctl(self.sock, SIOCSIFADDR, &mut req) };
+
+			  if res < 0 {
+				    panic!("{}", io::Error::last_os_error());
+        }
+    }
+
+    fn add_ipv6_addr(&self, addr: in6_addr) {
+			  let mut req = in6_ifreq {
+				    ifr6_addr: addr,
+            ifr6_prefixlen: 8,
+            ifr6_ifindex: self.if_index
+        };
+			  let res = unsafe { ioctl(self.sock, SIOCSIFADDR, &mut req) };
+			  if res < 0 {
+				    panic!("{}", io::Error::last_os_error());
+        }
+    }
+
+	  pub fn add_address(&self, ip: CString) {
+		    self.up();
+        let ip6 = ip.clone();
+        match self.get_in_addr(ip) {
+            Ok(addr) => self.add_ipv4_addr(addr),
+            Err(s) => {
+                match self.get_in6_addr(ip6) {
+                    Ok(addr) => self.add_ipv6_addr(addr),
+                    Err(s) => panic!("We're expecting an ipv4 or ipv6 address string")
+                }
             }
-        } else {
-            panic!("We're expecting an ipv4 or ipv6 address string");
-        } 
-    }		
-	}
+	      }
+    }
 
 	pub fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
 		assert!(buffer.len() >= MTU_SIZE);
