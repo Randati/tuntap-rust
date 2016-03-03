@@ -27,10 +27,15 @@ pub enum TunTapType {
 	Tap
 }
 
+pub enum IpType {
+    Ipv4,
+    Ipv6
+}
 
 pub struct TunTap {
 	pub file: File,
 	sock: c_int,
+  ip_type: IpType,
 	if_name: [u8; IFNAMSIZ],
 	if_index: c_int
 }
@@ -49,17 +54,34 @@ impl fmt::Debug for TunTap {
 
 
 impl TunTap {
-	pub fn create(typ: TunTapType) -> TunTap {
-		TunTap::create_named(typ, &CString::new("").unwrap())
+	pub fn create(typ: TunTapType, ip_type: IpType) -> TunTap {
+		TunTap::create_named(typ, ip_type, &CString::new("").unwrap())
 	}
 
-	pub fn create_named(typ: TunTapType, name: &CString) -> TunTap {
+    pub fn create_named_from_address(typ: TunTapType, ip_type: IpType,
+                                     name: &CString, ip: CString) -> TunTap {
+        let ip6 = ip.clone();
+        let ip_addr = ip.clone();
+        let ip_type = match TunTap::get_in_addr(ip) {
+            Ok(v4) => IpType::Ipv4,
+            Err(msg) => match TunTap::get_in6_addr(ip6) {
+                Ok(v6) => IpType::Ipv6,
+                Err(msg) => panic!("Ip address was neither version 4 or version 6")
+            }
+        };
+        let mut tt = TunTap::create_named(typ, ip_type, name);
+        tt.add_address(ip_addr);
+        tt
+    }
+
+	pub fn create_named(typ: TunTapType, ip_type: IpType, name: &CString) -> TunTap {
 		let (file, if_name) = TunTap::create_if(typ, name);
-		let (sock, if_index) = TunTap::create_socket(if_name);
+		let (sock, if_index) = TunTap::create_socket(&ip_type, if_name);
 
 		TunTap {
 			file: file,
 			sock: sock,
+      ip_type: ip_type,
 			if_name: if_name,
 			if_index: if_index
 		}
@@ -97,7 +119,11 @@ impl TunTap {
 		(file, req.ifr_name)
 	}
 
-	fn create_socket(if_name: [u8; IFNAMSIZ], sock_type: c_int) -> (c_int, c_int) {
+	fn create_socket(ip_type: &IpType, if_name: [u8; IFNAMSIZ]) -> (c_int, c_int) {
+    let sock_type = match ip_type {
+        &IpType::Ipv4 => AF_INET,
+        &IpType::Ipv6 => AF_INET6
+    };
 		let sock = unsafe { socket(sock_type, SOCK_DGRAM, 0) };
 		if sock < 0 {
 			panic!("{}", io::Error::last_os_error());
@@ -153,7 +179,8 @@ impl TunTap {
 		}
 	}
 
-    fn get_in_addr(&self, ip: CString) -> Result<in_addr, &'static str> {
+
+    fn get_in_addr(ip: CString) -> Result<in_addr, &'static str> {
         let mut addr_4 = in_addr{ s_addr: 0};
         let addr_4_ptr: *mut c_void = &mut addr_4 as *mut _ as *mut c_void;
 
@@ -163,7 +190,7 @@ impl TunTap {
         }
     }
 
-    fn get_in6_addr(&self, ip: CString) -> Result<in6_addr, &'static str> {
+    fn get_in6_addr(ip: CString) -> Result<in6_addr, &'static str> {
         let mut addr_6: in6_addr = unsafe { mem::uninitialized() };
         let addr_6_ptr: *mut c_void = &mut addr_6 as *mut _ as *mut c_void;
 
@@ -174,7 +201,8 @@ impl TunTap {
     }
 
 
-    fn add_ipv4_addr(&self, addr: in_addr) {
+    fn add_ipv4_addr(&self, ip: CString) {
+        let addr = TunTap::get_in_addr(ip).unwrap();
         let sock_addr = sockaddr_in {
             sin_family: AF_INET as sa_family_t,
             sin_port: 0,
@@ -188,13 +216,13 @@ impl TunTap {
         };
 
 			  let res = unsafe { ioctl(self.sock, SIOCSIFADDR, &mut req) };
-
 			  if res < 0 {
 				    panic!("{}", io::Error::last_os_error());
         }
     }
 
-    fn add_ipv6_addr(&self, addr: in6_addr) {
+    fn add_ipv6_addr(&self, ip: CString) {
+        let addr = TunTap::get_in6_addr(ip).unwrap();
 			  let mut req = in6_ifreq {
 				    ifr6_addr: addr,
             ifr6_prefixlen: 8,
@@ -208,16 +236,10 @@ impl TunTap {
 
 	  pub fn add_address(&self, ip: CString) {
 		    self.up();
-        let ip6 = ip.clone();
-        match self.get_in_addr(ip) {
-            Ok(addr) => self.add_ipv4_addr(addr),
-            Err(s) => {
-                match self.get_in6_addr(ip6) {
-                    Ok(addr) => self.add_ipv6_addr(addr),
-                    Err(s) => panic!("We're expecting an ipv4 or ipv6 address string")
-                }
-            }
-	      }
+        match self.ip_type {
+            IpType::Ipv4 => self.add_ipv4_addr(ip),
+            IpType::Ipv6 => self.add_ipv6_addr(ip),
+        }
     }
 
 	pub fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
