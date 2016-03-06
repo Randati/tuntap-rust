@@ -1,11 +1,8 @@
-#![feature(env, fs, io, path, process)]
-
 use std::env;
 use std::path::Path;
 use std::process::Command;
 use std::fs::File;
 use std::io::Write;
-
 
 fn main() {
 	let src_dir_str = env::var_os("CARGO_MANIFEST_DIR").unwrap();
