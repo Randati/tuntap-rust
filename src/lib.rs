@@ -1,5 +1,3 @@
-#![feature(libc, clone_from_slice)]
-
 extern crate libc;
 
 pub use tuntap::TunTap;

@@ -7,7 +7,8 @@ use std::io;
 use std::mem;
 use std::os::unix::prelude::AsRawFd;
 use std::path::Path;
-use libc::{c_int, c_char, c_void, AF_INET, AF_INET6, SOCK_DGRAM, socket, ioctl, close, in_addr, in6_addr, sockaddr_in, sa_family_t};
+use libc::{c_int, c_char, c_void, AF_INET, AF_INET6, SOCK_DGRAM,
+           socket, ioctl, close, in_addr, in6_addr,sockaddr_in, sa_family_t};
 use c_interop::*;
 
 const DEVICE_PATH: &'static str = "/dev/net/tun";
@@ -23,8 +24,8 @@ extern {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum TunTapType {
-	Tun,
-	Tap
+	  Tun,
+	  Tap
 }
 
 pub enum IpType {
@@ -33,30 +34,30 @@ pub enum IpType {
 }
 
 pub struct TunTap {
-	pub file: File,
-	sock: c_int,
-  ip_type: IpType,
-	if_name: [u8; IFNAMSIZ],
-	if_index: c_int
+	  pub file: File,
+	  sock: c_int,
+    ip_type: IpType,
+	  if_name: [u8; IFNAMSIZ],
+	  if_index: c_int
 }
 
 impl Drop for TunTap {
-	fn drop(&mut self) {
-		unsafe { close(self.sock) };
-	}
+	  fn drop(&mut self) {
+		    unsafe { close(self.sock) };
+	  }
 }
 
 impl fmt::Debug for TunTap {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "Tun({:?})", self.get_name())
-	}
+	  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		    write!(f, "Tun({:?})", self.get_name())
+	  }
 }
 
 
 impl TunTap {
-	pub fn create(typ: TunTapType, ip_type: IpType) -> TunTap {
-		TunTap::create_named(typ, ip_type, &CString::new("").unwrap())
-	}
+	  pub fn create(typ: TunTapType, ip_type: IpType) -> TunTap {
+		    TunTap::create_named(typ, ip_type, &CString::new("").unwrap())
+	  }
 
     pub fn create_named_from_address(typ: TunTapType,
                                      name: &CString, ip: &CString) -> TunTap {
@@ -67,122 +68,119 @@ impl TunTap {
                 Err(_) => panic!("Ip address was neither version 4 or version 6")
             }
         };
-        let mut tt = TunTap::create_named(typ, ip_type, name);
+        let tt = TunTap::create_named(typ, ip_type, name);
         tt.add_address(ip);
         tt
     }
 
-	pub fn create_named(typ: TunTapType, ip_type: IpType, name: &CString) ->
-        TunTap {
-		let (file, if_name) = TunTap::create_if(typ, name);
-		let (sock, if_index) = TunTap::create_socket(&ip_type, if_name);
+	  pub fn create_named(typ: TunTapType, ip_type: IpType, name: &CString) -> TunTap {
+		    let (file, if_name) = TunTap::create_if(typ, name);
+		    let (sock, if_index) = TunTap::create_socket(&ip_type, if_name);
 
-		TunTap {
-			file: file,
-			sock: sock,
-      ip_type: ip_type,
-			if_name: if_name,
-			if_index: if_index
-		}
-	}
+		    TunTap {
+			      file: file,
+			      sock: sock,
+            ip_type: ip_type,
+			      if_name: if_name,
+			      if_index: if_index
+		    }
+	  }
 
-	fn create_if(typ: TunTapType, name: &CString) -> (File, [u8; IFNAMSIZ]) {
-		let name_slice = name.as_bytes_with_nul();
-		if name_slice.len() > IFNAMSIZ {
-			panic!("Interface name too long, max length is {}", IFNAMSIZ - 1);
-		}
+	  fn create_if(typ: TunTapType, name: &CString) -> (File, [u8; IFNAMSIZ]) {
+		    let name_slice = name.as_bytes_with_nul();
+		    if name_slice.len() > IFNAMSIZ {
+			      panic!("Interface name too long, max length is {}", IFNAMSIZ - 1);
+		    }
 
-		let path = Path::new(DEVICE_PATH);
-		let file = match OpenOptions::new().read(true).write(true).open(&path) {
-			Err(why) => panic!("Couldn't open tun device '{}': {:?}",
-                         path.display(), why),
-			Ok(file) => file,
-		};
+		    let path = Path::new(DEVICE_PATH);
+		    let file = match OpenOptions::new().read(true).write(true).open(&path) {
+			      Err(why) => panic!("Couldn't open tun device '{}': {:?}",
+                               path.display(), why),
+			      Ok(file) => file,
+		    };
 
-		let mut req = ioctl_flags_data {
-			ifr_name: {
-				let mut buffer = [0u8; IFNAMSIZ];
-				buffer[..name_slice.len()].clone_from_slice(name_slice);
-				buffer
-			},
-			ifr_flags: match typ {
-				TunTapType::Tun => IFF_TUN | IFF_NO_PI,
-				TunTapType::Tap => IFF_TAP | IFF_NO_PI
-			}
-		};
+		    let mut req = ioctl_flags_data {
+			      ifr_name: {
+				        let mut buffer = [0u8; IFNAMSIZ];
+				        buffer[..name_slice.len()].clone_from_slice(name_slice);
+				        buffer
+			      },
+			      ifr_flags: match typ {
+				        TunTapType::Tun => IFF_TUN | IFF_NO_PI,
+				        TunTapType::Tap => IFF_TAP | IFF_NO_PI
+			      }
+		    };
 
-		let res = unsafe { ioctl(file.as_raw_fd(), TUNSETIFF, &mut req) };
-		if res < 0 {
-			panic!("{}", io::Error::last_os_error());
-		}
+		    let res = unsafe { ioctl(file.as_raw_fd(), TUNSETIFF, &mut req) };
+		    if res < 0 {
+			      panic!("{}", io::Error::last_os_error());
+		    }
 
-		(file, req.ifr_name)
-	}
+		    (file, req.ifr_name)
+	  }
 
-	fn create_socket(ip_type: &IpType, if_name: [u8; IFNAMSIZ]) ->
-        (c_int, c_int) {
-    let sock_type = match ip_type {
-        &IpType::Ipv4 => AF_INET,
-        &IpType::Ipv6 => AF_INET6
-    };
-		let sock = unsafe { socket(sock_type, SOCK_DGRAM, 0) };
-		if sock < 0 {
-			panic!("{}", io::Error::last_os_error());
-		}
+	  fn create_socket(ip_type: &IpType, if_name: [u8; IFNAMSIZ]) -> (c_int, c_int) {
+        let sock_type = match ip_type {
+            &IpType::Ipv4 => AF_INET,
+            &IpType::Ipv6 => AF_INET6
+        };
+		    let sock = unsafe { socket(sock_type, SOCK_DGRAM, 0) };
+		    if sock < 0 {
+			      panic!("{}", io::Error::last_os_error());
+		    }
 
-		let mut req = ioctl_ifindex_data {
-			ifr_name: if_name,
-			ifr_ifindex: -1
-		};
+		    let mut req = ioctl_ifindex_data {
+			      ifr_name: if_name,
+			      ifr_ifindex: -1
+		    };
 
-		let res = unsafe { ioctl(sock, SIOCGIFINDEX, &mut req) };
-		if res < 0 {
-			let err = io::Error::last_os_error();
-			unsafe { close(sock) };
-			panic!("{}", err);
-		}
+		    let res = unsafe { ioctl(sock, SIOCGIFINDEX, &mut req) };
+		    if res < 0 {
+			      let err = io::Error::last_os_error();
+			      unsafe { close(sock) };
+			      panic!("{}", err);
+		    }
 
-		(sock, req.ifr_ifindex)
-	}
+		    (sock, req.ifr_ifindex)
+	  }
 
-	pub fn get_name(&self) -> CString {
-    let mut it = self.if_name.iter();
-		let nul_pos = match it.position(|x| *x == 0) {
-			Some(p) => p,
-			None => panic!("Device name should be null-terminated")
-		};
+	  pub fn get_name(&self) -> CString {
+        let mut it = self.if_name.iter();
+		    let nul_pos = match it.position(|x| *x == 0) {
+			      Some(p) => p,
+			      None => panic!("Device name should be null-terminated")
+		    };
 
-	  CString::new(&self.if_name[..nul_pos]).unwrap()
-	}
+	      CString::new(&self.if_name[..nul_pos]).unwrap()
+	  }
 
-	pub fn up(&self) {
-		let mut req = ioctl_flags_data {
-			ifr_name: self.if_name,
-			ifr_flags: 0
-		};
+	  pub fn up(&self) {
+		    let mut req = ioctl_flags_data {
+			      ifr_name: self.if_name,
+			      ifr_flags: 0
+		    };
 
 
-		let res = unsafe { ioctl(self.sock, SIOCGIFFLAGS, &mut req) };
-		if res < 0 {
-			panic!("{}", io::Error::last_os_error());
-		}
+		    let res = unsafe { ioctl(self.sock, SIOCGIFFLAGS, &mut req) };
+		    if res < 0 {
+			      panic!("{}", io::Error::last_os_error());
+		    }
 
-		if req.ifr_flags & IFF_UP & IFF_RUNNING != 0 {
-			// Already up
-			return;
-		}
+		    if req.ifr_flags & IFF_UP & IFF_RUNNING != 0 {
+			      // Already up
+			      return;
+		    }
 
-		req.ifr_flags |= IFF_UP | IFF_RUNNING;
+		    req.ifr_flags |= IFF_UP | IFF_RUNNING;
 
-		let res = unsafe { ioctl(self.sock, SIOCSIFFLAGS, &mut req) };
-		if res < 0 {
-			panic!("{}", io::Error::last_os_error());
-		}
-	}
+		    let res = unsafe { ioctl(self.sock, SIOCSIFFLAGS, &mut req) };
+		    if res < 0 {
+			      panic!("{}", io::Error::last_os_error());
+		    }
+	  }
 
 
-    fn get_addr<T>(ip: &CString, addr_type: i32, addr: &mut T) ->
-        Result<(), &'static str> {
+    fn get_addr<T>(ip: &CString, addr_type: i32, addr: &mut T) -> Result<(), &'static str> {
         let addr_ptr = addr as *mut _ as *mut c_void;
         match unsafe { inet_pton(addr_type, ip.as_ptr(), addr_ptr) } {
             1 => Ok(()),
@@ -247,14 +245,14 @@ impl TunTap {
         }
     }
 
-	pub fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-		assert!(buffer.len() >= MTU_SIZE);
+	  pub fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+		    assert!(buffer.len() >= MTU_SIZE);
 
-		let len = try!(self.file.read(buffer));
-		Ok(len)
-	}
+		    let len = try!(self.file.read(buffer));
+		    Ok(len)
+	  }
 
-	pub fn write(&mut self, data: &[u8]) -> io::Result<()> {
-		self.file.write_all(data)
-	}
+	  pub fn write(&mut self, data: &[u8]) -> io::Result<()> {
+		    self.file.write_all(data)
+	  }
 }
