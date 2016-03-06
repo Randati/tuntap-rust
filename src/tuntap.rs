@@ -56,14 +56,15 @@ impl fmt::Debug for TunTap {
 
 impl TunTap {
 	  pub fn create(typ: TunTapType, ip_type: IpType) -> TunTap {
-		    TunTap::create_named(typ, ip_type, &CString::new("").unwrap())
+		    TunTap::create_named(typ, ip_type, "")
 	  }
 
     pub fn create_named_from_address(typ: TunTapType,
-                                     name: &CString, ip: &CString) -> TunTap {
-        let ip_type = match TunTap::get_in_addr(ip) {
+                                     name: &str, ip: &str) -> TunTap {
+        let ip_c = &CString::new(ip).unwrap();
+        let ip_type = match TunTap::get_in_addr(ip_c) {
             Ok(_) => IpType::Ipv4,
-            Err(_) => match TunTap::get_in6_addr(ip) {
+            Err(_) => match TunTap::get_in6_addr(ip_c) {
                 Ok(_) => IpType::Ipv6,
                 Err(_) => panic!("Ip address was neither version 4 or version 6")
             }
@@ -73,7 +74,8 @@ impl TunTap {
         tt
     }
 
-	  pub fn create_named(typ: TunTapType, ip_type: IpType, name: &CString) -> TunTap {
+	  pub fn create_named(typ: TunTapType, ip_type: IpType,
+                        name: &str) -> TunTap {
 		    let (file, if_name) = TunTap::create_if(typ, name);
 		    let (sock, if_index) = TunTap::create_socket(&ip_type, if_name);
 
@@ -86,8 +88,9 @@ impl TunTap {
 		    }
 	  }
 
-	  fn create_if(typ: TunTapType, name: &CString) -> (File, [u8; IFNAMSIZ]) {
-		    let name_slice = name.as_bytes_with_nul();
+	  fn create_if(typ: TunTapType, name: &str) -> (File, [u8; IFNAMSIZ]) {
+        let name_c = &CString::new(name).unwrap();
+		    let name_slice = name_c.as_bytes_with_nul();
 		    if name_slice.len() > IFNAMSIZ {
 			      panic!("Interface name too long, max length is {}", IFNAMSIZ - 1);
 		    }
@@ -119,7 +122,8 @@ impl TunTap {
 		    (file, req.ifr_name)
 	  }
 
-	  fn create_socket(ip_type: &IpType, if_name: [u8; IFNAMSIZ]) -> (c_int, c_int) {
+	  fn create_socket(ip_type: &IpType,
+                     if_name: [u8; IFNAMSIZ]) -> (c_int, c_int) {
         let sock_type = match ip_type {
             &IpType::Ipv4 => AF_INET,
             &IpType::Ipv6 => AF_INET6
@@ -180,7 +184,8 @@ impl TunTap {
 	  }
 
 
-    fn get_addr<T>(ip: &CString, addr_type: i32, addr: &mut T) -> Result<(), &'static str> {
+    fn get_addr<T>(ip: &CString, addr_type: i32,
+                   addr: &mut T) -> Result<(), &'static str> {
         let addr_ptr = addr as *mut _ as *mut c_void;
         match unsafe { inet_pton(addr_type, ip.as_ptr(), addr_ptr) } {
             1 => Ok(()),
@@ -237,11 +242,12 @@ impl TunTap {
         }
     }
 
-	  pub fn add_address(&self, ip: &CString) {
+	  pub fn add_address(&self, ip: &str) {
 		    self.up();
+        let ip_c = &CString::new(ip).unwrap();
         match self.ip_type {
-            IpType::Ipv4 => self.add_ipv4_addr(ip),
-            IpType::Ipv6 => self.add_ipv6_addr(ip),
+            IpType::Ipv4 => self.add_ipv4_addr(ip_c),
+            IpType::Ipv6 => self.add_ipv6_addr(ip_c),
         }
     }
 
